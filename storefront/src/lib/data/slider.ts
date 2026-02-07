@@ -1,3 +1,4 @@
+import { sdk } from "@lib/config"
 import { cache } from "react"
 
 export type Slide = {
@@ -10,20 +11,15 @@ export type Slide = {
 }
 
 export const getSlides = cache(async function (): Promise<Slide[]> {
-  const backendUrl =
-    process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
-
   try {
-    const res = await fetch(`${backendUrl}/store/sliders`, {
-      next: { revalidate: 60 },
-    })
-
-    if (!res.ok) {
-      return []
-    }
-
-    const data = await res.json()
-    return data.slides || []
+    const data = await sdk.client.fetch<{ slides: Slide[] }>(
+      "/store/sliders",
+      {
+        method: "GET",
+        next: { revalidate: 60 },
+      }
+    )
+    return data?.slides || []
   } catch (error) {
     console.error("Failed to fetch slides:", error)
     return []
