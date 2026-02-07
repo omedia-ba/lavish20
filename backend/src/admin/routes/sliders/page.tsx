@@ -1,16 +1,4 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { PhotoSolid } from "@medusajs/icons"
-import {
-  Container,
-  Heading,
-  Button,
-  Input,
-  Label,
-  Switch,
-  Table,
-  Toaster,
-  toast,
-} from "@medusajs/ui"
 import { useEffect, useState } from "react"
 
 type Slide = {
@@ -28,8 +16,8 @@ const SlidersPage = () => {
   const [showForm, setShowForm] = useState(false)
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [message, setMessage] = useState("")
 
-  // Form state
   const [title, setTitle] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [link, setLink] = useState("")
@@ -38,21 +26,17 @@ const SlidersPage = () => {
 
   const fetchSlides = async () => {
     try {
-      const res = await fetch("/admin/sliders", {
-        credentials: "include",
-      })
+      const res = await fetch("/admin/sliders", { credentials: "include" })
       const data = await res.json()
       setSlides(data.slides || [])
     } catch (err) {
-      toast.error("Error", { description: "Failed to fetch slides" })
+      setMessage("Failed to fetch slides")
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchSlides()
-  }, [])
+  useEffect(() => { fetchSlides() }, [])
 
   const resetForm = () => {
     setTitle("")
@@ -67,67 +51,42 @@ const SlidersPage = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append("files", file)
-
       const res = await fetch("/admin/uploads", {
         method: "POST",
         credentials: "include",
         body: formData,
       })
-
       const data = await res.json()
       if (data.files && data.files.length > 0) {
         setImageUrl(data.files[0].url)
-        toast.success("Success", { description: "Image uploaded" })
+        setMessage("Image uploaded!")
       }
     } catch (err) {
-      toast.error("Error", { description: "Failed to upload image" })
+      setMessage("Failed to upload image")
     } finally {
       setUploading(false)
     }
   }
 
   const handleSubmit = async () => {
-    if (!imageUrl) {
-      toast.error("Error", { description: "Please upload an image" })
-      return
-    }
-
+    if (!imageUrl) { setMessage("Please upload an image"); return }
     try {
-      const body = {
-        title: title || null,
-        image_url: imageUrl,
-        link: link || null,
-        position,
-        is_active: isActive,
-      }
-
+      const body = { title: title || null, image_url: imageUrl, link: link || null, position, is_active: isActive }
       if (editingSlide) {
-        await fetch(`/admin/sliders/${editingSlide.id}`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-        toast.success("Success", { description: "Slide updated" })
+        await fetch(`/admin/sliders/${editingSlide.id}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        setMessage("Slide updated!")
       } else {
-        await fetch("/admin/sliders", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-        toast.success("Success", { description: "Slide created" })
+        await fetch("/admin/sliders", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        setMessage("Slide created!")
       }
-
       resetForm()
       fetchSlides()
     } catch (err) {
-      toast.error("Error", { description: "Failed to save slide" })
+      setMessage("Failed to save slide")
     }
   }
 
@@ -143,206 +102,117 @@ const SlidersPage = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this slide?")) return
-
     try {
-      await fetch(`/admin/sliders/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      })
-      toast.success("Success", { description: "Slide deleted" })
+      await fetch(`/admin/sliders/${id}`, { method: "DELETE", credentials: "include" })
+      setMessage("Slide deleted!")
       fetchSlides()
     } catch (err) {
-      toast.error("Error", { description: "Failed to delete slide" })
+      setMessage("Failed to delete slide")
     }
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Toaster />
+    <div style={{ padding: "24px", maxWidth: "1200px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+        <h1 style={{ fontSize: "24px", fontWeight: "bold" }}>Homepage Slider</h1>
+        <button
+          onClick={() => { resetForm(); setPosition(slides.length); setShowForm(true) }}
+          style={{ padding: "8px 16px", backgroundColor: "#7c3aed", color: "white", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "500" }}
+        >
+          + Add Slide
+        </button>
+      </div>
 
-      <Container>
-        <div className="flex items-center justify-between mb-6">
-          <Heading level="h1">Homepage Slider</Heading>
-          <Button
-            variant="primary"
-            onClick={() => {
-              resetForm()
-              setPosition(slides.length)
-              setShowForm(true)
-            }}
-          >
-            Add Slide
-          </Button>
+      {message && (
+        <div style={{ padding: "12px", marginBottom: "16px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#166534" }}>
+          {message}
+          <button onClick={() => setMessage("")} style={{ float: "right", border: "none", background: "none", cursor: "pointer", fontWeight: "bold" }}>x</button>
         </div>
+      )}
 
-        {showForm && (
-          <div className="border border-ui-border-base rounded-lg p-6 mb-6 bg-ui-bg-subtle">
-            <Heading level="h2" className="mb-4">
-              {editingSlide ? "Edit Slide" : "New Slide"}
-            </Heading>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label>Title (optional)</Label>
-                <Input
-                  placeholder="Slide title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label>Link URL (optional)</Label>
-                <Input
-                  placeholder="https://..."
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label>Position</Label>
-                <Input
-                  type="number"
-                  value={position}
-                  onChange={(e) => setPosition(parseInt(e.target.value) || 0)}
-                />
-              </div>
-
-              <div className="flex items-center gap-3 pt-6">
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-                <Label>Active</Label>
-              </div>
-
-              <div className="col-span-full">
-                <Label>Image</Label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="block w-full text-sm text-ui-fg-subtle
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-lg file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-ui-bg-interactive file:text-ui-fg-on-color
-                    hover:file:bg-ui-bg-interactive-hover
-                    file:cursor-pointer cursor-pointer mt-1"
-                />
-                {uploading && (
-                  <p className="text-sm text-ui-fg-muted mt-1">Uploading...</p>
-                )}
-                {imageUrl && (
-                  <div className="mt-3">
-                    <img
-                      src={imageUrl}
-                      alt="Preview"
-                      className="max-h-40 rounded-lg border border-ui-border-base"
-                    />
-                  </div>
-                )}
-              </div>
+      {showForm && (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "24px", marginBottom: "24px", backgroundColor: "#f9fafb" }}>
+          <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>{editingSlide ? "Edit Slide" : "New Slide"}</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "14px", fontWeight: "500", marginBottom: "4px" }}>Title (optional)</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Slide title" style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px" }} />
             </div>
-
-            <div className="flex gap-2 mt-6">
-              <Button variant="primary" onClick={handleSubmit}>
-                {editingSlide ? "Update" : "Save"}
-              </Button>
-              <Button variant="secondary" onClick={resetForm}>
-                Cancel
-              </Button>
+            <div>
+              <label style={{ display: "block", fontSize: "14px", fontWeight: "500", marginBottom: "4px" }}>Link URL (optional)</label>
+              <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "14px", fontWeight: "500", marginBottom: "4px" }}>Position</label>
+              <input type="number" value={position} onChange={(e) => setPosition(parseInt(e.target.value) || 0)} style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingTop: "24px" }}>
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: "18px", height: "18px" }} />
+              <label style={{ fontSize: "14px", fontWeight: "500" }}>Active</label>
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontSize: "14px", fontWeight: "500", marginBottom: "4px" }}>Image</label>
+              <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: "14px" }} />
+              {uploading && <p style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>Uploading...</p>}
+              {imageUrl && <img src={imageUrl} alt="Preview" style={{ maxHeight: "160px", borderRadius: "8px", marginTop: "12px", border: "1px solid #e5e7eb" }} />}
             </div>
           </div>
-        )}
+          <div style={{ display: "flex", gap: "8px", marginTop: "20px" }}>
+            <button onClick={handleSubmit} style={{ padding: "8px 20px", backgroundColor: "#7c3aed", color: "white", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "500" }}>
+              {editingSlide ? "Update" : "Save"}
+            </button>
+            <button onClick={resetForm} style={{ padding: "8px 20px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "500" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
-        {loading ? (
-          <p className="text-ui-fg-muted">Loading...</p>
-        ) : slides.length === 0 ? (
-          <p className="text-ui-fg-muted text-center py-8">
-            No slides yet. Click "Add Slide" to create one.
-          </p>
-        ) : (
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.HeaderCell>Image</Table.HeaderCell>
-                <Table.HeaderCell>Title</Table.HeaderCell>
-                <Table.HeaderCell>Link</Table.HeaderCell>
-                <Table.HeaderCell>Position</Table.HeaderCell>
-                <Table.HeaderCell>Active</Table.HeaderCell>
-                <Table.HeaderCell className="text-right">
-                  Actions
-                </Table.HeaderCell>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {slides.map((slide) => (
-                <Table.Row key={slide.id}>
-                  <Table.Cell>
-                    <img
-                      src={slide.image_url}
-                      alt={slide.title || "Slide"}
-                      className="h-12 w-20 object-cover rounded"
-                    />
-                  </Table.Cell>
-                  <Table.Cell>{slide.title || "-"}</Table.Cell>
-                  <Table.Cell>
-                    {slide.link ? (
-                      <a
-                        href={slide.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-ui-fg-interactive underline"
-                      >
-                        {slide.link.length > 30
-                          ? slide.link.substring(0, 30) + "..."
-                          : slide.link}
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>{slide.position}</Table.Cell>
-                  <Table.Cell>
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        slide.is_active ? "bg-green-500" : "bg-gray-400"
-                      }`}
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        onClick={() => handleEdit(slide)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="small"
-                        onClick={() => handleDelete(slide.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        )}
-      </Container>
+      {loading ? (
+        <p style={{ color: "#6b7280" }}>Loading...</p>
+      ) : slides.length === 0 ? (
+        <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 0" }}>No slides yet. Click "Add Slide" to create one.</p>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+              <th style={{ padding: "12px 8px", fontSize: "14px", fontWeight: "600" }}>Image</th>
+              <th style={{ padding: "12px 8px", fontSize: "14px", fontWeight: "600" }}>Title</th>
+              <th style={{ padding: "12px 8px", fontSize: "14px", fontWeight: "600" }}>Link</th>
+              <th style={{ padding: "12px 8px", fontSize: "14px", fontWeight: "600" }}>Pos</th>
+              <th style={{ padding: "12px 8px", fontSize: "14px", fontWeight: "600" }}>Active</th>
+              <th style={{ padding: "12px 8px", fontSize: "14px", fontWeight: "600", textAlign: "right" }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slides.map((slide) => (
+              <tr key={slide.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <td style={{ padding: "8px" }}>
+                  <img src={slide.image_url} alt={slide.title || "Slide"} style={{ height: "48px", width: "80px", objectFit: "cover", borderRadius: "4px" }} />
+                </td>
+                <td style={{ padding: "8px", fontSize: "14px" }}>{slide.title || "-"}</td>
+                <td style={{ padding: "8px", fontSize: "14px" }}>
+                  {slide.link ? <a href={slide.link} target="_blank" rel="noreferrer" style={{ color: "#7c3aed", textDecoration: "underline" }}>{slide.link.length > 30 ? slide.link.substring(0, 30) + "..." : slide.link}</a> : "-"}
+                </td>
+                <td style={{ padding: "8px", fontSize: "14px" }}>{slide.position}</td>
+                <td style={{ padding: "8px" }}>
+                  <span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "50%", backgroundColor: slide.is_active ? "#22c55e" : "#9ca3af" }} />
+                </td>
+                <td style={{ padding: "8px", textAlign: "right" }}>
+                  <button onClick={() => handleEdit(slide)} style={{ padding: "4px 12px", marginRight: "4px", backgroundColor: "#f3f4f6", border: "1px solid #d1d5db", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Edit</button>
+                  <button onClick={() => handleDelete(slide.id)} style={{ padding: "4px 12px", backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "6px", cursor: "pointer", fontSize: "13px", color: "#dc2626" }}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   )
 }
 
 export const config = defineRouteConfig({
   label: "Slider",
-  icon: PhotoSolid,
 })
 
 export default SlidersPage
