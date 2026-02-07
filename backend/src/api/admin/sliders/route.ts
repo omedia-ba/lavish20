@@ -1,8 +1,9 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
+import SliderModuleService from "../../../modules/slider/service"
 import { SLIDER_MODULE } from "../../../modules/slider"
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
-  const sliderService = req.scope.resolve(SLIDER_MODULE)
+  const sliderService: SliderModuleService = req.scope.resolve(SLIDER_MODULE)
 
   const slides = await sliderService.listSlides(
     {},
@@ -13,9 +14,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 }
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
-  const sliderService = req.scope.resolve(SLIDER_MODULE)
+  const sliderService: SliderModuleService = req.scope.resolve(SLIDER_MODULE)
 
-  const slide = await sliderService.createSlides(req.body)
+  const slide = await sliderService.createSlides(req.body as any)
 
   res.json({ slide })
 }
